@@ -3,7 +3,6 @@ import axios, { Method, AxiosRequestConfig, AxiosResponse } from 'axios';
 import * as log4js from 'log4js'
 import * as cheerio from 'cheerio'
 import * as pq from 'priority-queue'
-import { data } from 'jquery';
 
 enum SessionStatus {
   Idle = 1,
@@ -123,10 +122,6 @@ export class Crawler {
     };
 
     this.groups = {}
-
-    this._request = {};
-    this._request['GET'] = request.get;
-    this._request['POST'] = request.post;
 
     this._onSchedule();
     this._onGroup();
@@ -303,71 +298,55 @@ export class Crawler {
       ropts[opt] = options[opt];
     }
 
-    //this.log('_doRequest', JSON.stringify(ropts));
     let session = this.groups[options.groupName].sessions[options.sessionName];
     session.lastStartTs = Date.now()
     axios(ropts)
-      .then((resp: any) => {
-        session.lastEndTs = Date.now()
-        this._onContent(error, options, response);
-        session.status = SessionStatus.Idle;
-        this.e.emit('schedule', options.groupName);
+      .then((res: any) => {
+        this._onContent(options, res)
       })
       .catch((error: Error) => {
-        this.log.error('refreshIndexList Failed', error)
-        //refreshIndexList()
+        this.log.error(error + ' when fetching ' + (options.uri || options.url) + (options.retries ? ' (' + options.retries + ' retries left)' : ''))
+        if (options.retries) {
+          this.groups[options.groupName].retries++;
+          setTimeout(() => {
+            options.retries--;
+            this._add2Queue(options.groupName, options);
+            this.groups[options.groupName].retries--;
+          }, options.retryTimeout);
+        } else if (options.error) {
+          options.error(error, options);
+        }
+      }).finally(() => {
+        session.lastEndTs = Date.now()
+        session.status = SessionStatus.Idle
+        this.e.emit('schedule', options.groupName)
       })
-    // @ts-ignore
-    this._request[ropts.method](ropts, (error: string, response: request.Response) => {
-      session.lastEndTs = Date.now()
-      this._onContent(error, options, response);
-
-      session.status = SessionStatus.Idle;
-      this.e.emit('schedule', options.groupName);
-    });
   };
 
-  _onContent(error: any, options: TaskOptions, response: request.Response) {
-    if (error) {
-      this.log.error(error + ' when fetching ' + (options.uri || options.url) + (options.retries ? ' (' + options.retries + ' retries left)' : ''));
+  _onContent(options: TaskOptions, res: AxiosResponse) {
+    if (!res.data) { res.data = ''; }
 
-      if (options.retries) {
-        this.groups[options.groupName].retries++;
-        setTimeout(() => {
-          options.retries--;
-          this._add2Queue(options.groupName, options);
-          this.groups[options.groupName].retries--;
-        }, options.retryTimeout);
-      } else if (options.error) {
-        options.error(error, options);
-      }
-
-      return;
-    }
-
-    if (!response.body) { response.body = ''; }
-
-    if (response.body.length == 0) {
-      this.log.warn('Got ' + (options.uri || 'html') + ' (' + response.body.length + ' bytes)...');
-      return options.success(options, response);
+    if (res.data.length == 0) {
+      this.log.warn('Got ' + (options.uri || 'html') + ' (' + res.data.length + ' bytes)...');
+      return options.success(options, res);
     } else {
-      this.log.info('Got ' + (options.uri || 'html') + ' (' + response.body.length + ' bytes)...');
+      this.log.info('Got ' + (options.uri || 'html') + ' (' + res.data.length + ' bytes)...');
     }
 
     if (options.method === 'HEAD' || !options.jQuery) {
-      return options.success(options, response);
+      return options.success(options, res);
     }
 
-    var injectableTypes = ['html', 'xhtml', 'text/xml', 'application/xml', '+xml'];
-    if (!options.html && !typeis.is(contentType(response), injectableTypes)) {
-      this.log.warn('response body is not HTML, skip injecting. Set jQuery to false to suppress this message');
-      return options.success(options, response);
+    var injectableTypes = ['html', 'xhtml', 'text/xml', 'application/xml', '+xml']
+    if (!options.html && !injectableTypes.includes(res.headers['content-type'])) {
+      this.log.warn('response body is not HTML, skip injecting. Set jQuery to false to suppress this message', res.headers['content-type']);
+      return options.success(options, res);
     }
 
-    this._inject(options, response);
+    this._inject(options, res);
   };
 
-  _inject(options: TaskOptions, response: CResponse) {
+  _inject(options: TaskOptions, res: CResponse) {
 
     let $;
     let defaultCheerioOptions = {
@@ -377,12 +356,12 @@ export class Crawler {
     };
     let cheerioOptions = options.jQuery.options || defaultCheerioOptions;
     try {
-      $ = cheerio.load(response.body, cheerioOptions);
-      response.$ = $;
+      $ = cheerio.load(res.data, cheerioOptions);
+      res.$ = $;
     } catch (e) {
       this.log.error('cheerio.load error', e);
     }
 
-    return options.success(options, response);
+    return options.success(options, res);
   }
 }
