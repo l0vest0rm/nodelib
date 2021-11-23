@@ -350,7 +350,7 @@ export class Crawler {
     }
 
     var injectableTypes = ['html', 'xhtml', 'text/xml', 'application/xml', '+xml']
-    if (!options.html && !injectableTypes.includes(res.headers['content-type'])) {
+    if (!options.html && !injectableTypes.includes(res.headers['content-type'].split(';')[0].trim())) {
       this.log.warn('response body is not HTML, skip injecting. Set jQuery to false to suppress this message', res.headers['content-type']);
       return options.success(options, res);
     }
