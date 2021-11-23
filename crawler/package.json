@@ -1,0 +1,27 @@
+{
+  "name": "crawler",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "prepublish": "npm run build",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^14.17.1",
+    "@types/cheerio": "^0.22.30",
+    "cheerio": "^1.0.0-rc.10",
+    "axios": "^0.24",
+    "log4js": "^6.3.0",
+    "@types/priority-queue": "file:../priority-queue/dist",
+    "priority-queue": "file:../priority-queue/dist"
+  }
+}
