@@ -300,11 +300,16 @@ export class Crawler {
 
     let session = this.groups[options.groupName].sessions[options.sessionName];
     session.lastStartTs = Date.now()
+    session.lastEndTs = 0
     axios(ropts)
       .then((res: any) => {
+        session.lastEndTs = Date.now()
         this._onContent(options, res)
       })
       .catch((error: Error) => {
+        if (!session.lastEndTs) {
+          session.lastEndTs = Date.now()
+        }
         this.log.error(error + ' when fetching ' + (options.uri || options.url) + (options.retries ? ' (' + options.retries + ' retries left)' : ''))
         if (options.retries) {
           this.groups[options.groupName].retries++;
@@ -317,7 +322,6 @@ export class Crawler {
           options.error(error, options);
         }
       }).finally(() => {
-        session.lastEndTs = Date.now()
         session.status = SessionStatus.Idle
         this.e.emit('schedule', options.groupName)
       })
