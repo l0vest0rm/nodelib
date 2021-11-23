@@ -214,10 +214,10 @@ var Crawler = /** @class */ (function () {
             this.e.emit('request', options);
         }
         if (options.params) {
-            this.log.info(options.method, options.uri, JSON.stringify(options.params));
+            this.log.info(options.method, options.url, JSON.stringify(options.params));
         }
         else {
-            this.log.info(options.method, options.uri);
+            this.log.info(options.method, options.url);
         }
         var requestArgs = ['url', 'method', 'headers', 'params', 'data', 'timeout', 'withCredentials', 'auth', 'responseType', 'responseEncoding', 'xsrfCookieName', 'maxRedirects', 'httpAgent', 'httpsAgent', 'proxy', 'decompress'];
         //let opts: request.UriOptions & Options = { uri: ropts.uri };
