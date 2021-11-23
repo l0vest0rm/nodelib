@@ -4,6 +4,20 @@ import * as log4js from 'log4js'
 import * as cheerio from 'cheerio'
 import * as pq from 'priority-queue'
 
+// 模拟浏览器信息
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36";
+axios.defaults.timeout = 5000
+axios.defaults.headers.common = {
+  'User-Agent': UA,
+  //cookie: Cookie,
+  //referer: 'https://ark-funds.com/arkk',
+  //accept: 'application/json, text/javascript, */*; q=0.01',
+  //'accept-encoding': 'gzip, deflate, br',
+  //'accept-language': 'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,cy;q=0.6,zh-TW;q=0.5,mt;q=0.4,fr;q=0.3,ja;q=0.2,hu;q=0.1,pl;q=0.1,pt;q=0.1',
+  //'sec-fetch-mode': 'cors',
+  //'sec-fetch-site': 'same-origin',
+}
+
 enum SessionStatus {
   Idle = 1,
   Running,
@@ -34,7 +48,7 @@ interface GroupOptions {
   timeout?: number
 }
 
-interface SessionOptions extends ax.AxiosRequestConfig {
+interface SessionOptions extends AxiosRequestConfig {
   waitBefore?: number,
   sessionVars?: AnyMap, //user define group vars
 }
@@ -59,7 +73,7 @@ interface _Group {
   options: GroupOptions;
   queue: pq.PriorityQueue;
   sessions: _SessionMap;
-  retries: number;
+  retries: number; //需要重试的有几个
 }
 
 interface _GroupMap {
@@ -85,20 +99,12 @@ export interface CrawlerOptions {
   log?: log4js.Logger;
 }
 
-function contentType(res: AxiosResponse) {
-  return get(res, 'content-type').split(';').filter((item: string) => item.trim().length !== 0).join(';');
-}
-
-function get(res: AxiosResponse, field: string): any {
-  return res.headers[field.toLowerCase()] || '';
-}
-
 export class Crawler {
-  e: events.EventEmitter;
-  protected options: CrawlerOptions;
-  protected groups: _GroupMap;
-  comparator: (a: any, b: any) => boolean;
-  log: log4js.Logger;
+  private e: events.EventEmitter;
+  private options: CrawlerOptions;
+  private groups: _GroupMap;
+  private comparator: (a: any, b: any) => boolean;
+  private log: log4js.Logger;
   constructor(e: events.EventEmitter, options: CrawlerOptions) {
     let defaultOptions = {
       runForever: true
@@ -137,14 +143,16 @@ export class Crawler {
     }
   }
 
-  _onSchedule() {
+  private _onSchedule() {
     this.e.on('schedule', (groupName: string) => {
       let group = this.groups[groupName];
 
-      if (group.queue.isEmpty() && group.retries == 0) {
-        //drain
-        this.e.emit('drain' + groupName);
-        return;
+      if (group.queue.isEmpty()) {
+        if (group.retries == 0) {
+          //drain
+          this.e.emit('drain' + groupName)
+        }
+        return
       }
 
       for (let sessionName in group.sessions) {
@@ -169,17 +177,17 @@ export class Crawler {
     });
   }
 
-  _onGroup() {
+  private _onGroup() {
     this.e.on('group', (groupName: string, options: GroupOptions | null) => {
       let defaultOptions: GroupOptions = {
         jQuery: false,
         method: 'get',
         priority: 100,
-        waitBefore: 1000,
+        waitBefore: 1,
         referer: false,
-        retries: 3,
-        retryTimeout: 10000,
-        timeout: 30000
+        retries: 1,
+        retryTimeout: 100,
+        timeout: 5000
       };
 
       if (!this.groups[groupName]) {
@@ -196,7 +204,7 @@ export class Crawler {
   }
 
   //session不继承instance参数
-  _onSession() {
+  private _onSession() {
     this.e.on('session', (groupName: string, sessionName: string, options: SessionOptions) => {
       if (this.groups[groupName].sessions[sessionName]) {
         this.groups[groupName].sessions[sessionName].options = options;
@@ -212,7 +220,7 @@ export class Crawler {
     });
   }
 
-  _onAdd() {
+  private _onAdd() {
     this.e.on('add', (groupName: string, options: TaskOptions) => {
       if (!this.groups[groupName]) {
         this.log.error('please check the groupName of options', groupName);
@@ -224,7 +232,7 @@ export class Crawler {
     });
   }
 
-  _onClear() {
+  private _onClear() {
     this.e.on('clear', (groupName: string) => {
       //clear queue
       let queue = this.groups[groupName].queue;
@@ -234,7 +242,7 @@ export class Crawler {
   }
 
 
-  _add2Queue(groupName: string, options: TaskOptions) {
+  private _add2Queue(groupName: string, options: TaskOptions) {
     options = { ...this.groups[groupName].options, ...options };
     options.groupName = groupName;
     this.groups[groupName].queue.push(options);
@@ -242,7 +250,7 @@ export class Crawler {
     this.e.emit('schedule', groupName);
   }
 
-  _doTask(options: TaskOptions) {
+  private _doTask(options: TaskOptions) {
     if (options.proxy)
       this.log.info('Use proxy', options.proxy);
 
@@ -278,7 +286,7 @@ export class Crawler {
       });
   };
 
-  _doRequest(options: TaskOptions) {
+  private _doRequest(options: TaskOptions) {
 
     if (options.skipEventRequest !== true) {
       this.e.emit('request', options);
@@ -327,7 +335,7 @@ export class Crawler {
       })
   };
 
-  _onContent(options: TaskOptions, res: AxiosResponse) {
+  private _onContent(options: TaskOptions, res: AxiosResponse) {
     if (!res.data) { res.data = ''; }
 
     if (res.data.length == 0) {
@@ -350,7 +358,7 @@ export class Crawler {
     this._inject(options, res);
   };
 
-  _inject(options: TaskOptions, res: CResponse) {
+  private _inject(options: TaskOptions, res: CResponse) {
 
     let $;
     let defaultCheerioOptions = {
