@@ -64,7 +64,7 @@ var Crawler = /** @class */ (function () {
         if (this.options.runForever) {
             setInterval(function () {
                 var used = process.memoryUsage().heapUsed / 1024 / 1024;
-                _this.log.info("The script uses approximately " + Math.round(used * 100) / 100 + " MB");
+                _this.log.info("The script uses approximately ".concat(Math.round(used * 100) / 100, " MB"));
             }, 600000);
         }
     }
@@ -225,12 +225,11 @@ var Crawler = /** @class */ (function () {
         (0, axios_1.default)(ropts)
             .then(function (res) {
             session.lastEndTs = Date.now();
-            if (options.params) {
-                _this.log.info(options.method, options.url, JSON.stringify(options.params));
-            }
-            else {
-                _this.log.info(options.method, options.url);
-            }
+            /*if (options.params) {
+              this.log.info(options.method, options.url, JSON.stringify(options.params))
+            } else {
+              this.log.info(options.method, options.url)
+            }*/
             _this._onContent(options, res);
         })
             .catch(function (error) {

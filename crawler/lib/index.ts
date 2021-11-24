@@ -303,11 +303,11 @@ export class Crawler {
     axios(ropts)
       .then((res: any) => {
         session.lastEndTs = Date.now()
-        if (options.params) {
+        /*if (options.params) {
           this.log.info(options.method, options.url, JSON.stringify(options.params))
         } else {
           this.log.info(options.method, options.url)
-        }
+        }*/
         this._onContent(options, res)
       })
       .catch((error: Error) => {
