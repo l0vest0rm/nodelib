@@ -64,7 +64,7 @@ var Crawler = /** @class */ (function () {
         if (this.options.runForever) {
             setInterval(function () {
                 var used = process.memoryUsage().heapUsed / 1024 / 1024;
-                _this.log.info("The script uses approximately ".concat(Math.round(used * 100) / 100, " MB"));
+                _this.log.info("The script uses approximately " + Math.round(used * 100) / 100 + " MB");
             }, 600000);
         }
     }
@@ -172,8 +172,6 @@ var Crawler = /** @class */ (function () {
     };
     Crawler.prototype._doTask = function (options) {
         var _this = this;
-        if (options.proxy)
-            this.log.info('Use proxy', options.proxy);
         if (!options.headers) {
             options.headers = {};
         }
@@ -213,12 +211,6 @@ var Crawler = /** @class */ (function () {
         if (options.skipEventRequest !== true) {
             this.e.emit('request', options);
         }
-        if (options.params) {
-            this.log.info(options.method, options.url, JSON.stringify(options.params));
-        }
-        else {
-            this.log.info(options.method, options.url);
-        }
         var requestArgs = ['url', 'method', 'headers', 'params', 'data', 'timeout', 'withCredentials', 'auth', 'responseType', 'responseEncoding', 'xsrfCookieName', 'maxRedirects', 'httpAgent', 'httpsAgent', 'proxy', 'decompress'];
         //let opts: request.UriOptions & Options = { uri: ropts.uri };
         var ropts = { url: options.url };
@@ -233,13 +225,19 @@ var Crawler = /** @class */ (function () {
         (0, axios_1.default)(ropts)
             .then(function (res) {
             session.lastEndTs = Date.now();
+            if (options.params) {
+                _this.log.info(options.method, options.url, JSON.stringify(options.params));
+            }
+            else {
+                _this.log.info(options.method, options.url);
+            }
             _this._onContent(options, res);
         })
             .catch(function (error) {
             if (!session.lastEndTs) {
                 session.lastEndTs = Date.now();
             }
-            _this.log.error(error + ' when fetching ' + (options.uri || options.url) + (options.retries ? ' (' + options.retries + ' retries left)' : ''));
+            _this.log.error(error + ' when fetching ' + options.url + (options.retries ? ' (' + options.retries + ' retries left)' : ''));
             if (options.retries) {
                 _this.groups[options.groupName].retries++;
                 setTimeout(function () {
@@ -260,13 +258,6 @@ var Crawler = /** @class */ (function () {
     Crawler.prototype._onContent = function (options, res) {
         if (!res.data) {
             res.data = '';
-        }
-        if (res.data.length == 0) {
-            this.log.warn('Got ' + (options.uri || 'html') + ' (' + res.data.length + ' bytes)...');
-            return options.success(options, res);
-        }
-        else {
-            this.log.info('Got ' + (options.uri || 'html') + ' (' + res.data.length + ' bytes)...');
         }
         if (options.method === 'HEAD' || !options.jQuery) {
             return options.success(options, res);

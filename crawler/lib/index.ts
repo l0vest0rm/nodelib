@@ -251,9 +251,6 @@ export class Crawler {
   }
 
   private _doTask(options: TaskOptions) {
-    if (options.proxy)
-      this.log.info('Use proxy', options.proxy);
-
     if (!options.headers) { options.headers = {}; }
     if (options.forceUTF8) { options.encoding = null; }
     // specifying json in request will have request sets body to JSON representation of value and 
@@ -292,12 +289,6 @@ export class Crawler {
       this.e.emit('request', options);
     }
 
-    if (options.params) {
-      this.log.info(options.method, options.url, JSON.stringify(options.params))
-    } else {
-      this.log.info(options.method, options.url)
-    }
-
     var requestArgs: string[] = ['url', 'method', 'headers', 'params', 'data', 'timeout', 'withCredentials', 'auth', 'responseType', 'responseEncoding', 'xsrfCookieName', 'maxRedirects', 'httpAgent', 'httpsAgent', 'proxy', 'decompress'];
     //let opts: request.UriOptions & Options = { uri: ropts.uri };
     let ropts: AxiosRequestConfig = { url: options.url }
@@ -312,13 +303,18 @@ export class Crawler {
     axios(ropts)
       .then((res: any) => {
         session.lastEndTs = Date.now()
+        if (options.params) {
+          this.log.info(options.method, options.url, JSON.stringify(options.params))
+        } else {
+          this.log.info(options.method, options.url)
+        }
         this._onContent(options, res)
       })
       .catch((error: Error) => {
         if (!session.lastEndTs) {
           session.lastEndTs = Date.now()
         }
-        this.log.error(error + ' when fetching ' + (options.uri || options.url) + (options.retries ? ' (' + options.retries + ' retries left)' : ''))
+        this.log.error(error + ' when fetching ' + options.url + (options.retries ? ' (' + options.retries + ' retries left)' : ''))
         if (options.retries) {
           this.groups[options.groupName].retries++;
           setTimeout(() => {
@@ -337,13 +333,6 @@ export class Crawler {
 
   private _onContent(options: TaskOptions, res: AxiosResponse) {
     if (!res.data) { res.data = ''; }
-
-    if (res.data.length == 0) {
-      this.log.warn('Got ' + (options.uri || 'html') + ' (' + res.data.length + ' bytes)...');
-      return options.success(options, res);
-    } else {
-      this.log.info('Got ' + (options.uri || 'html') + ' (' + res.data.length + ' bytes)...');
-    }
 
     if (options.method === 'HEAD' || !options.jQuery) {
       return options.success(options, res);
