@@ -236,7 +236,7 @@ var Crawler = /** @class */ (function () {
             if (!session.lastEndTs) {
                 session.lastEndTs = Date.now();
             }
-            _this.log.error(error + ' when fetching ' + options.url + (options.retries ? ' (' + options.retries + ' retries left)' : ''));
+            _this.log.error(error + JSON.stringify(options.params) + ' when fetching ' + options.url + (options.retries ? ' (' + options.retries + ' retries left)' : ''));
             if (options.retries) {
                 _this.groups[options.groupName].retries++;
                 setTimeout(function () {

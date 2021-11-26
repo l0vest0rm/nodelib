@@ -314,7 +314,7 @@ export class Crawler {
         if (!session.lastEndTs) {
           session.lastEndTs = Date.now()
         }
-        this.log.error(error + ' when fetching ' + options.url + (options.retries ? ' (' + options.retries + ' retries left)' : ''))
+        this.log.error(error + JSON.stringify(options.params) + ' when fetching ' + options.url + (options.retries ? ' (' + options.retries + ' retries left)' : ''))
         if (options.retries) {
           this.groups[options.groupName].retries++;
           setTimeout(() => {
