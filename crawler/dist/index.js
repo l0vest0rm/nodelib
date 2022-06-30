@@ -11,7 +11,6 @@ var __assign = (this && this.__assign) || function () {
     return __assign.apply(this, arguments);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Crawler = void 0;
 var axios_1 = require("axios");
 var log4js = require("log4js");
 var cheerio = require("cheerio");
@@ -21,13 +20,6 @@ var UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KH
 axios_1.default.defaults.timeout = 5000;
 axios_1.default.defaults.headers.common = {
     'User-Agent': UA,
-    //cookie: Cookie,
-    //referer: 'https://ark-funds.com/arkk',
-    //accept: 'application/json, text/javascript, */*; q=0.01',
-    //'accept-encoding': 'gzip, deflate, br',
-    //'accept-language': 'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,cy;q=0.6,zh-TW;q=0.5,mt;q=0.4,fr;q=0.3,ja;q=0.2,hu;q=0.1,pl;q=0.1,pt;q=0.1',
-    //'sec-fetch-mode': 'cors',
-    //'sec-fetch-site': 'same-origin',
 };
 var SessionStatus;
 (function (SessionStatus) {
@@ -50,7 +42,7 @@ var Crawler = /** @class */ (function () {
         }
         else {
             this.log = log4js.getLogger('crawler');
-            this.log.level = 'debug';
+            this.log.level = 'info';
         }
         this.comparator = function (a, b) {
             return a.priority < b.priority;
@@ -64,7 +56,7 @@ var Crawler = /** @class */ (function () {
         if (this.options.runForever) {
             setInterval(function () {
                 var used = process.memoryUsage().heapUsed / 1024 / 1024;
-                _this.log.info("The script uses approximately ".concat(Math.round(used * 100) / 100, " MB"));
+                _this.log.info("The script uses approximately " + Math.round(used * 100) / 100 + " MB");
             }, 600000);
         }
     }
@@ -222,14 +214,15 @@ var Crawler = /** @class */ (function () {
         var session = this.groups[options.groupName].sessions[options.sessionName];
         session.lastStartTs = Date.now();
         session.lastEndTs = 0;
-        (0, axios_1.default)(ropts)
+        axios_1.default(ropts)
             .then(function (res) {
             session.lastEndTs = Date.now();
-            /*if (options.params) {
-              this.log.info(options.method, options.url, JSON.stringify(options.params))
-            } else {
-              this.log.info(options.method, options.url)
-            }*/
+            if (options.params) {
+                _this.log.debug(options.method, options.url, options.headers, JSON.stringify(options.params), res);
+            }
+            else {
+                _this.log.debug(options.method, options.url, options.headers, res);
+            }
             _this._onContent(options, res);
         })
             .catch(function (error) {

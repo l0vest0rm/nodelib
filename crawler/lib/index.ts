@@ -104,7 +104,7 @@ export class Crawler {
   private options: CrawlerOptions;
   private groups: _GroupMap;
   private comparator: (a: any, b: any) => boolean;
-  private log: log4js.Logger;
+  public log: log4js.Logger;
   constructor(e: events.EventEmitter, options: CrawlerOptions) {
     let defaultOptions = {
       runForever: true
@@ -119,7 +119,7 @@ export class Crawler {
       delete this.options['log'];
     } else {
       this.log = log4js.getLogger('crawler');
-      this.log.level = 'debug';
+      this.log.level = 'info';
     }
 
 
@@ -303,11 +303,11 @@ export class Crawler {
     axios(ropts)
       .then((res: any) => {
         session.lastEndTs = Date.now()
-        /*if (options.params) {
-          this.log.info(options.method, options.url, JSON.stringify(options.params))
+        if (options.params) {
+          this.log.debug(options.method, options.url, options.headers, JSON.stringify(options.params), res)
         } else {
-          this.log.info(options.method, options.url)
-        }*/
+          this.log.debug(options.method, options.url, options.headers, res)
+        }
         this._onContent(options, res)
       })
       .catch((error: Error) => {
