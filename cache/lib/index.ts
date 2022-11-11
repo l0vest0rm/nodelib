@@ -9,6 +9,8 @@ interface Data {
   v: any
 }
 
+export type Retrieved = (key: string, value: any, ttl: number) => void
+
 export class DataCache {
   config: any
   checkInterval: number
@@ -16,7 +18,7 @@ export class DataCache {
   queue: { [key: string]: any[] }
   constructor(config: any) {
     this.config = config
-    if (config.checkInterval != undefined) {
+    if (config.checkInterval) {
       this.checkInterval = config.checkInterval
     } else {
       this.checkInterval = scheduleTime
@@ -26,15 +28,14 @@ export class DataCache {
     if (this.checkInterval > 0) {
       setTimeout(this._checkData, this.checkInterval)
     }
-
   }
 
-  get(key: string, retrieve: (retrieved: (key: string, value: any, ttl: number) => void) => void, callback: (value: any) => void) {
-    if (this.data[key] != undefined && this.data[key].t > Date.now()) {
+  get(key: string, retrieve: (retrieved: Retrieved) => void, callback: (value: any) => void) {
+    if (this.data[key] && this.data[key].t > Date.now()) {
       //有数据，并且没有过期
       this.data[key].l = Date.now()
       callback(this.data[key].v)
-    } else if (this.queue[key] == undefined) {
+    } else if (!this.queue[key]) {
       this.queue[key] = [callback]
       retrieve(this._retrieved)
     } else {
@@ -45,8 +46,8 @@ export class DataCache {
   }
 
   //强制重新获取
-  getNocache(key: string, retrieve: (retrieved: (key: string, value: any, ttl: number) => void) => void, callback: (value: any) => void) {
-    if (this.queue[key] == undefined) {
+  getNocache(key: string, retrieve: (retrieved: Retrieved) => void, callback: (value: any) => void) {
+    if (!this.queue[key]) {
       this.queue[key] = [callback]
     } else {
       //队列不为空
@@ -61,7 +62,7 @@ export class DataCache {
       this.data[key] = { t: Date.now() + ttl * 1000, v: value, l: Date.now() }
     }
 
-    if (this.queue[key] == undefined) {
+    if (!this.queue[key]) {
       return
     }
 

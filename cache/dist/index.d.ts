@@ -3,6 +3,7 @@ interface Data {
     t: number;
     v: any;
 }
+export declare type Retrieved = (key: string, value: any, ttl: number) => void;
 export declare class DataCache {
     config: any;
     checkInterval: number;
@@ -13,8 +14,8 @@ export declare class DataCache {
         [key: string]: any[];
     };
     constructor(config: any);
-    get(key: string, retrieve: (retrieved: (key: string, value: any, ttl: number) => void) => void, callback: (value: any) => void): void;
-    getNocache(key: string, retrieve: (retrieved: (key: string, value: any, ttl: number) => void) => void, callback: (value: any) => void): void;
+    get(key: string, retrieve: (retrieved: Retrieved) => void, callback: (value: any) => void): void;
+    getNocache(key: string, retrieve: (retrieved: Retrieved) => void, callback: (value: any) => void): void;
     _retrieved: (key: string, value: any, ttl: number) => void;
     _checkData: () => void;
 }
