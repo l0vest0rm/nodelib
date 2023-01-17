@@ -44,6 +44,7 @@ export declare class Pay {
     private publicKey?;
     private privateKey?;
     private authType;
+    private key;
     /**
      * 构造器
      * @param appid 直连商户申请的公众号或移动应用appid。
@@ -57,7 +58,7 @@ export declare class Pay {
      * @param userAgent 可选参数 User-Agent
      * @param key 可选参数 APIv3密钥
      */
-    constructor(appid: string, mchid: string, publicKey: Buffer, privateKey: Buffer, serial_no: string);
+    constructor(appid: string, mchid: string, key: string, publicKey: Buffer, privateKey: Buffer, serial_no: string);
     /**
      * 参数初始化
      */
@@ -95,5 +96,13 @@ export declare class Pay {
      * @param params 请求参数
      */
     private postRequest;
+    /**
+     * 回调解密
+     * @param ciphertext  Base64编码后的开启/停用结果数据密文
+     * @param associated_data 附加数据
+     * @param nonce 加密使用的随机串
+     * @param key  APIv3密钥
+     */
+    decipher_gcm<T extends any>(ciphertext: string, associated_data: string, nonce: string): T;
 }
 export {};
