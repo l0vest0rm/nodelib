@@ -13,8 +13,8 @@ async function test() {
 
   let params = {
     description: '测试',
-    out_trade_no: '1609914303237',
-    notify_url: '回调url',
+    out_trade_no: Date.now() + '',
+    notify_url: 'https://study6.vip/api/callback',
     amount: {
       total: 1,
     },
