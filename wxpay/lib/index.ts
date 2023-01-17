@@ -70,7 +70,8 @@ export class Pay {
   private publicKey?: Buffer; // 公钥
   private privateKey?: Buffer; // 密钥
   private authType = 'WECHATPAY2-SHA256-RSA2048'; // 认证类型，目前为WECHATPAY2-SHA256-RSA2048
-
+  private key?: string; // APIv3密钥
+  
   /**
    * 构造器
    * @param appid 直连商户申请的公众号或移动应用appid。
@@ -195,5 +196,34 @@ export class Pay {
         'Accept-Encoding': 'gzip',
       }
     })
+  }
+
+  /**
+   * 回调解密
+   * @param ciphertext  Base64编码后的开启/停用结果数据密文
+   * @param associated_data 附加数据
+   * @param nonce 加密使用的随机串
+   * @param key  APIv3密钥
+   */
+  public decipher_gcm<T extends any>(ciphertext: string, associated_data: string, nonce: string, key?: string): T {
+    if (key) this.key = key;
+    if (!this.key) throw new Error('缺少key');
+
+    const _ciphertext = Buffer.from(ciphertext, 'base64');
+
+    // 解密 ciphertext字符  AEAD_AES_256_GCM算法
+    const authTag: any = _ciphertext.slice(_ciphertext.length - 16);
+    const data = _ciphertext.slice(0, _ciphertext.length - 16);
+    const decipher = crypto.createDecipheriv('aes-256-gcm', this.key, nonce);
+    decipher.setAuthTag(authTag);
+    decipher.setAAD(Buffer.from(associated_data));
+    const decoded = decipher.update(data, undefined, 'utf8');
+    decipher.final();
+
+    try {
+      return JSON.parse(decoded);
+    } catch (e) {
+      return decoded as T;
+    }
   }
 }
