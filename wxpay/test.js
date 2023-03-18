@@ -1,4 +1,5 @@
 import * as fs from 'fs'
+import * as crypto from 'crypto'
 import * as wxpay from './dist/index.js'
 
 function initWxpay() {
@@ -75,5 +76,3 @@ async function testDecodeNotify() {
   let ts = (new Date(decode.success_time)).getTime()
   console.log(ts)
 }
-
-testDecodeNotify()

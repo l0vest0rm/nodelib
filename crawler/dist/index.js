@@ -1,25 +1,22 @@
 "use strict";
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-var axios_1 = require("axios");
-var log4js = require("log4js");
-var cheerio = require("cheerio");
-var pq = require("priority-queue");
+exports.Crawler = void 0;
+const axios_1 = require("axios");
+const log4js = require("log4js");
+const cheerio = require("cheerio");
+const pq = require("priority-queue");
 // 模拟浏览器信息
-var UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36";
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36";
 axios_1.default.defaults.timeout = 5000;
 axios_1.default.defaults.headers.common = {
     'User-Agent': UA,
+    //cookie: Cookie,
+    //referer: 'https://ark-funds.com/arkk',
+    //accept: 'application/json, text/javascript, */*; q=0.01',
+    //'accept-encoding': 'gzip, deflate, br',
+    //'accept-language': 'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,cy;q=0.6,zh-TW;q=0.5,mt;q=0.4,fr;q=0.3,ja;q=0.2,hu;q=0.1,pl;q=0.1,pt;q=0.1',
+    //'sec-fetch-mode': 'cors',
+    //'sec-fetch-site': 'same-origin',
 };
 var SessionStatus;
 (function (SessionStatus) {
@@ -27,15 +24,14 @@ var SessionStatus;
     SessionStatus[SessionStatus["Running"] = 2] = "Running";
     SessionStatus[SessionStatus["Sleeping"] = 3] = "Sleeping";
 })(SessionStatus || (SessionStatus = {}));
-var Crawler = /** @class */ (function () {
-    function Crawler(e, options) {
-        var _this = this;
-        var defaultOptions = {
+class Crawler {
+    constructor(e, options) {
+        let defaultOptions = {
             runForever: true
         };
         this.e = e;
         // default is the default kind options and also the global options
-        this.options = options ? __assign(__assign({}, defaultOptions), options) : defaultOptions;
+        this.options = options ? { ...defaultOptions, ...options } : defaultOptions;
         if (this.options.log) {
             this.log = this.options.log;
             delete this.options['log'];
@@ -54,50 +50,43 @@ var Crawler = /** @class */ (function () {
         this._onAdd();
         this._onClear();
         if (this.options.runForever) {
-            setInterval(function () {
-                var used = process.memoryUsage().heapUsed / 1024 / 1024;
-                _this.log.info("The script uses approximately " + Math.round(used * 100) / 100 + " MB");
+            setInterval(() => {
+                let used = process.memoryUsage().heapUsed / 1024 / 1024;
+                this.log.info(`The script uses approximately ${Math.round(used * 100) / 100} MB`);
             }, 600000);
         }
     }
-    Crawler.prototype._onSchedule = function () {
-        var _this = this;
-        this.e.on('schedule', function (groupName) {
-            var group = _this.groups[groupName];
+    _onSchedule() {
+        this.e.on('schedule', (groupName) => {
+            let group = this.groups[groupName];
             if (group.queue.isEmpty()) {
                 if (group.retries == 0) {
                     //drain
-                    _this.e.emit('drain' + groupName);
+                    this.e.emit('drain' + groupName);
                 }
                 return;
             }
-            var _loop_1 = function (sessionName) {
+            for (let sessionName in group.sessions) {
                 if (group.sessions[sessionName].status != SessionStatus.Idle) {
-                    return "continue";
+                    continue;
                 }
-                var session = group.sessions[sessionName];
+                let session = group.sessions[sessionName];
                 session.status = SessionStatus.Sleeping;
-                var options = group.queue.pop();
+                let options = group.queue.pop();
                 options.sessionName = sessionName;
-                var timeout = options.waitBefore;
-                setTimeout(function () {
+                let timeout = options.waitBefore;
+                setTimeout(() => {
                     session.status = SessionStatus.Running;
-                    options = __assign(__assign({}, session.options), options);
-                    _this._doTask(options);
+                    options = { ...session.options, ...options };
+                    this._doTask(options);
                 }, timeout);
-                return { value: void 0 };
-            };
-            for (var sessionName in group.sessions) {
-                var state_1 = _loop_1(sessionName);
-                if (typeof state_1 === "object")
-                    return state_1.value;
+                return;
             }
         });
-    };
-    Crawler.prototype._onGroup = function () {
-        var _this = this;
-        this.e.on('group', function (groupName, options) {
-            var defaultOptions = {
+    }
+    _onGroup() {
+        this.e.on('group', (groupName, options) => {
+            let defaultOptions = {
                 jQuery: false,
                 method: 'get',
                 priority: 100,
@@ -107,26 +96,25 @@ var Crawler = /** @class */ (function () {
                 retryTimeout: 100,
                 timeout: 5000
             };
-            if (!_this.groups[groupName]) {
-                _this.groups[groupName] = {
+            if (!this.groups[groupName]) {
+                this.groups[groupName] = {
                     queue: new pq.PriorityQueue(),
                     options: defaultOptions,
                     sessions: {},
                     retries: 0
                 };
             }
-            _this.groups[groupName].options = options ? __assign(__assign({}, defaultOptions), options) : defaultOptions;
+            this.groups[groupName].options = options ? { ...defaultOptions, ...options } : defaultOptions;
         });
-    };
+    }
     //session不继承instance参数
-    Crawler.prototype._onSession = function () {
-        var _this = this;
-        this.e.on('session', function (groupName, sessionName, options) {
-            if (_this.groups[groupName].sessions[sessionName]) {
-                _this.groups[groupName].sessions[sessionName].options = options;
+    _onSession() {
+        this.e.on('session', (groupName, sessionName, options) => {
+            if (this.groups[groupName].sessions[sessionName]) {
+                this.groups[groupName].sessions[sessionName].options = options;
             }
             else {
-                _this.groups[groupName].sessions[sessionName] = {
+                this.groups[groupName].sessions[sessionName] = {
                     options: options,
                     status: SessionStatus.Idle,
                     lastStartTs: 0,
@@ -134,36 +122,33 @@ var Crawler = /** @class */ (function () {
                 };
             }
         });
-    };
-    Crawler.prototype._onAdd = function () {
-        var _this = this;
-        this.e.on('add', function (groupName, options) {
-            if (!_this.groups[groupName]) {
-                _this.log.error('please check the groupName of options', groupName);
+    }
+    _onAdd() {
+        this.e.on('add', (groupName, options) => {
+            if (!this.groups[groupName]) {
+                this.log.error('please check the groupName of options', groupName);
                 return;
             }
-            _this._add2Queue(groupName, options);
+            this._add2Queue(groupName, options);
             return;
         });
-    };
-    Crawler.prototype._onClear = function () {
-        var _this = this;
-        this.e.on('clear', function (groupName) {
+    }
+    _onClear() {
+        this.e.on('clear', (groupName) => {
             //clear queue
-            var queue = _this.groups[groupName].queue;
+            let queue = this.groups[groupName].queue;
             while (!queue.isEmpty)
                 queue.pop();
         });
-    };
-    Crawler.prototype._add2Queue = function (groupName, options) {
-        options = __assign(__assign({}, this.groups[groupName].options), options);
+    }
+    _add2Queue(groupName, options) {
+        options = { ...this.groups[groupName].options, ...options };
         options.groupName = groupName;
         this.groups[groupName].queue.push(options);
         //this.log('_add2Queue', JSON.stringify(options));
         this.e.emit('schedule', groupName);
-    };
-    Crawler.prototype._doTask = function (options) {
-        var _this = this;
+    }
+    _doTask(options) {
         if (!options.headers) {
             options.headers = {};
         }
@@ -189,65 +174,63 @@ var Crawler = /** @class */ (function () {
             return this._doRequest(options);
         }
         options.preRequest(options)
-            .then(function (cancel) {
+            .then((cancel) => {
             if (cancel)
                 return;
-            _this._doRequest(options);
-        }).catch(function (error) {
-            _this.log.error("preRequest Catch Error:", error);
+            this._doRequest(options);
+        }).catch((error) => {
+            this.log.error("preRequest Catch Error:", error);
         });
-    };
+    }
     ;
-    Crawler.prototype._doRequest = function (options) {
-        var _this = this;
+    _doRequest(options) {
         if (options.skipEventRequest !== true) {
             this.e.emit('request', options);
         }
         var requestArgs = ['url', 'method', 'headers', 'params', 'data', 'timeout', 'withCredentials', 'auth', 'responseType', 'responseEncoding', 'xsrfCookieName', 'maxRedirects', 'httpAgent', 'httpsAgent', 'proxy', 'decompress'];
         //let opts: request.UriOptions & Options = { uri: ropts.uri };
-        var ropts = { url: options.url };
-        for (var _i = 0, requestArgs_1 = requestArgs; _i < requestArgs_1.length; _i++) {
-            var opt = requestArgs_1[_i];
+        let ropts = { url: options.url };
+        for (let opt of requestArgs) {
             // @ts-ignore
             ropts[opt] = options[opt];
         }
-        var session = this.groups[options.groupName].sessions[options.sessionName];
+        let session = this.groups[options.groupName].sessions[options.sessionName];
         session.lastStartTs = Date.now();
         session.lastEndTs = 0;
-        axios_1.default(ropts)
-            .then(function (res) {
+        (0, axios_1.default)(ropts)
+            .then((res) => {
             session.lastEndTs = Date.now();
             if (options.params) {
-                _this.log.debug(options.method, options.url, options.headers, JSON.stringify(options.params), res);
+                this.log.debug(options.method, options.url, options.headers, JSON.stringify(options.params), res);
             }
             else {
-                _this.log.debug(options.method, options.url, options.headers, res);
+                this.log.debug(options.method, options.url, options.headers, res);
             }
-            _this._onContent(options, res);
+            this._onContent(options, res);
         })
-            .catch(function (error) {
+            .catch((error) => {
             if (!session.lastEndTs) {
                 session.lastEndTs = Date.now();
             }
-            _this.log.error(error + JSON.stringify(options.params) + ' when fetching ' + options.url + (options.retries ? ' (' + options.retries + ' retries left)' : ''));
+            this.log.error(error + JSON.stringify(options.params) + ' when fetching ' + options.url + (options.retries ? ' (' + options.retries + ' retries left)' : ''));
             if (options.retries) {
-                _this.groups[options.groupName].retries++;
-                setTimeout(function () {
+                this.groups[options.groupName].retries++;
+                setTimeout(() => {
                     options.retries--;
-                    _this._add2Queue(options.groupName, options);
-                    _this.groups[options.groupName].retries--;
+                    this._add2Queue(options.groupName, options);
+                    this.groups[options.groupName].retries--;
                 }, options.retryTimeout);
             }
             else if (options.error) {
                 options.error(error, options);
             }
-        }).finally(function () {
+        }).finally(() => {
             session.status = SessionStatus.Idle;
-            _this.e.emit('schedule', options.groupName);
+            this.e.emit('schedule', options.groupName);
         });
-    };
+    }
     ;
-    Crawler.prototype._onContent = function (options, res) {
+    _onContent(options, res) {
         if (!res.data) {
             res.data = '';
         }
@@ -260,16 +243,16 @@ var Crawler = /** @class */ (function () {
             return options.success(options, res);
         }
         this._inject(options, res);
-    };
+    }
     ;
-    Crawler.prototype._inject = function (options, res) {
-        var $;
-        var defaultCheerioOptions = {
+    _inject(options, res) {
+        let $;
+        let defaultCheerioOptions = {
             normalizeWhitespace: false,
             xmlMode: false,
             decodeEntities: true
         };
-        var cheerioOptions = options.jQuery.options || defaultCheerioOptions;
+        let cheerioOptions = options.jQuery.options || defaultCheerioOptions;
         try {
             $ = cheerio.load(res.data, cheerioOptions);
             res.$ = $;
@@ -278,7 +261,6 @@ var Crawler = /** @class */ (function () {
             this.log.error('cheerio.load error', e);
         }
         return options.success(options, res);
-    };
-    return Crawler;
-}());
+    }
+}
 exports.Crawler = Crawler;
