@@ -98,7 +98,7 @@ class Crawler {
             };
             if (!this.groups[groupName]) {
                 this.groups[groupName] = {
-                    queue: new pq.PriorityQueue(),
+                    queue: new pq.PriorityQueue(this.comparator),
                     options: defaultOptions,
                     sessions: {},
                     retries: 0
