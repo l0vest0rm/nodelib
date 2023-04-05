@@ -359,6 +359,8 @@ export class Crawler {
               this._add2Queue(options.groupName, options);
               this.groups[options.groupName].retries--;
             }, options.retryTimeout);
+          } else if (options.callback) {
+            options.callback(value.error, options);
           } else if (options.error) {
             options.error(value.error, options);
           }
@@ -392,6 +394,8 @@ export class Crawler {
             this._add2Queue(options.groupName, options);
             this.groups[options.groupName].retries--;
           }, options.retryTimeout);
+        }  else if (options.callback) {
+          options.callback(error, options);
         } else if (options.error) {
           options.error(error, options);
         }
@@ -406,20 +410,27 @@ export class Crawler {
     if (!res.data) { res.data = ''; }
 
     if (options.method === 'HEAD' || !options.jQuery) {
-      return options.success(options, res);
+      if (options.callback) {
+        return options.callback(null, options, res);
+      } else {
+        return options.success(options, res);
+      }
     }
 
     var injectableTypes = ['html', 'xhtml', 'text/xml', 'application/xml', '+xml']
     if (!options.html && !injectableTypes.includes(res.headers['content-type'].split(';')[0].trim())) {
       this.log.warn('response body is not HTML, skip injecting. Set jQuery to false to suppress this message', res.headers['content-type']);
-      return options.success(options, res);
+      if (options.callback) {
+        return options.callback(null, options, res);
+      } else {
+        return options.success(options, res);
+      }
     }
 
     this._inject(options, res);
   };
 
   private _inject(options: TaskOptions, res: CResponse) {
-
     let $;
     let defaultCheerioOptions = {
       normalizeWhitespace: false,
@@ -434,6 +445,10 @@ export class Crawler {
       this.log.error('cheerio.load error', e);
     }
 
-    return options.success(options, res);
+    if (options.callback) {
+      return options.callback(null, options, res);
+    } else {
+      return options.success(options, res);
+    }
   }
 }

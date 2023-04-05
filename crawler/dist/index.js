@@ -251,6 +251,9 @@ class Crawler {
                             this.groups[options.groupName].retries--;
                         }, options.retryTimeout);
                     }
+                    else if (options.callback) {
+                        options.callback(value.error, options);
+                    }
                     else if (options.error) {
                         options.error(value.error, options);
                     }
@@ -287,6 +290,9 @@ class Crawler {
                         this.groups[options.groupName].retries--;
                     }, options.retryTimeout);
                 }
+                else if (options.callback) {
+                    options.callback(error, options);
+                }
                 else if (options.error) {
                     options.error(error, options);
                 }
@@ -302,12 +308,22 @@ class Crawler {
             res.data = '';
         }
         if (options.method === 'HEAD' || !options.jQuery) {
-            return options.success(options, res);
+            if (options.callback) {
+                return options.callback(null, options, res);
+            }
+            else {
+                return options.success(options, res);
+            }
         }
         var injectableTypes = ['html', 'xhtml', 'text/xml', 'application/xml', '+xml'];
         if (!options.html && !injectableTypes.includes(res.headers['content-type'].split(';')[0].trim())) {
             this.log.warn('response body is not HTML, skip injecting. Set jQuery to false to suppress this message', res.headers['content-type']);
-            return options.success(options, res);
+            if (options.callback) {
+                return options.callback(null, options, res);
+            }
+            else {
+                return options.success(options, res);
+            }
         }
         this._inject(options, res);
     }
@@ -327,7 +343,12 @@ class Crawler {
         catch (e) {
             this.log.error('cheerio.load error', e);
         }
-        return options.success(options, res);
+        if (options.callback) {
+            return options.callback(null, options, res);
+        }
+        else {
+            return options.success(options, res);
+        }
     }
 }
 exports.Crawler = Crawler;
