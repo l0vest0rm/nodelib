@@ -15,6 +15,7 @@ interface GroupOptions {
     retries?: number;
     retryTimeout?: number;
     timeout?: number;
+    cacheTtl?: number;
 }
 interface SessionOptions extends AxiosRequestConfig {
     waitBefore?: number;
@@ -38,6 +39,7 @@ export declare type TaskOptions = AxiosRequestConfig & AnyMap;
 export interface CrawlerOptions {
     runForever?: boolean;
     log?: log4js.Logger;
+    logLevel?: string;
 }
 export declare class Crawler {
     private e;

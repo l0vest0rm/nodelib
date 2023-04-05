@@ -3,6 +3,7 @@ import axios, { Method, AxiosRequestConfig, AxiosResponse } from 'axios';
 import * as log4js from 'log4js'
 import * as cheerio from 'cheerio'
 import * as pq from 'priority-queue'
+import * as dataCache from "cache"
 
 // 模拟浏览器信息
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36";
@@ -45,12 +46,13 @@ interface GroupOptions {
   referer?: boolean | string,
   retries?: number,
   retryTimeout?: number,
-  timeout?: number
+  timeout?: number,
+  cacheTtl?: number
 }
 
 interface SessionOptions extends AxiosRequestConfig {
   waitBefore?: number,
-  sessionVars?: AnyMap, //user define group vars
+  sessionVars?: AnyMap, //user define session vars
 }
 
 interface Session {
@@ -97,6 +99,34 @@ export type TaskOptions = AxiosRequestConfig & AnyMap;
 export interface CrawlerOptions {
   runForever?: boolean
   log?: log4js.Logger;
+  logLevel?: string;
+}
+
+const cache = new dataCache.DataCache({})
+const replacer = (key: string, value: any) =>
+value instanceof Object && !(value instanceof Array) ? 
+    Object.keys(value)
+    .sort()
+    .reduce((sorted: any, key) => {
+        sorted[key] = value[key];
+        return sorted 
+    }, {}) :
+    value;
+
+//https://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript
+const hash = (str: string, seed: number = 0) => {
+  let h1 = 0xdeadbeef ^ seed,
+    h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0, ch; i < str.length; i++) {
+    ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 }
 
 export class Crawler {
@@ -119,10 +149,10 @@ export class Crawler {
       delete this.options['log'];
     } else {
       this.log = log4js.getLogger('crawler');
-      this.log.level = 'info';
+      this.log.level = options.logLevel? options.logLevel: 'info';
     }
 
-
+    //数字越小优先级越高
     this.comparator = function (a: PriorityOptions, b: PriorityOptions) {
       return a.priority < b.priority;
     };
@@ -165,7 +195,8 @@ export class Crawler {
         session.status = SessionStatus.Sleeping;
         let options = group.queue.pop();
         options.sessionName = sessionName;
-        let timeout = options.waitBefore;
+        let timeout = options.waitBefore + session.lastEndTs - Date.now();
+        timeout = timeout > 0 ? timeout: 0;
         setTimeout(() => {
           session.status = SessionStatus.Running;
           options = { ...session.options, ...options }
@@ -300,7 +331,46 @@ export class Crawler {
     let session = this.groups[options.groupName].sessions[options.sessionName];
     session.lastStartTs = Date.now()
     session.lastEndTs = 0
-    axios(ropts)
+    if (options.cacheTtl) {
+      let key = hash(JSON.stringify(ropts, replacer)).toString()
+      cache.get(key, (retrieved: dataCache.Retrieved) => {
+        axios(ropts)
+          .then((res: any) => {
+            session.lastEndTs = Date.now()
+            if (options.params) {
+              this.log.debug(options.method, options.url, options.headers, JSON.stringify(options.params), res)
+            } else {
+              this.log.debug(options.method, options.url, options.headers, res)
+            }
+            //this._onContent(options, res)
+            retrieved(key, {res: res}, options.cacheTtl)
+          })
+          .catch((error: Error) => {
+            session.lastEndTs = Date.now()
+            retrieved(key, {error: error}, 0)
+          })
+      },  (value: any) => {
+        if (value.error) {
+          this.log.error(value.error + JSON.stringify(options.params) + ' when fetching ' + options.url + (options.retries ? ' (' + options.retries + ' retries left)' : ''))
+          if (options.retries) {
+            this.groups[options.groupName].retries++;
+            setTimeout(() => {
+              options.retries--;
+              this._add2Queue(options.groupName, options);
+              this.groups[options.groupName].retries--;
+            }, options.retryTimeout);
+          } else if (options.error) {
+            options.error(value.error, options);
+          }
+        } else {
+          this._onContent(options, value.res)
+        }
+        
+        session.status = SessionStatus.Idle
+        this.e.emit('schedule', options.groupName)
+      })
+    } else {
+      axios(ropts)
       .then((res: any) => {
         session.lastEndTs = Date.now()
         if (options.params) {
@@ -329,6 +399,7 @@ export class Crawler {
         session.status = SessionStatus.Idle
         this.e.emit('schedule', options.groupName)
       })
+    }
   };
 
   private _onContent(options: TaskOptions, res: AxiosResponse) {
