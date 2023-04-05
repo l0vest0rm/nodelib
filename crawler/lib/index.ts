@@ -103,7 +103,7 @@ export interface CrawlerOptions {
 }
 
 const cache = new dataCache.DataCache({})
-const replacer = (key: string, value: any) =>
+/*const replacer = (key: string, value: any) =>
 value instanceof Object && !(value instanceof Array) ? 
     Object.keys(value)
     .sort()
@@ -127,7 +127,7 @@ const hash = (str: string, seed: number = 0) => {
   h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
   
   return 4294967296 * (2097151 & h2) + (h1 >>> 0);
-}
+}*/
 
 export class Crawler {
   private e: events.EventEmitter;
@@ -332,8 +332,8 @@ export class Crawler {
     session.lastStartTs = Date.now()
     session.lastEndTs = 0
     if (options.cacheTtl) {
-      let key = hash(JSON.stringify(ropts, replacer)).toString()
-      cache.get(key, (retrieved: dataCache.Retrieved) => {
+      //let key = hash(JSON.stringify(ropts, replacer)).toString()
+      cache.get(options.cacheKey, (retrieved: dataCache.Retrieved) => {
         axios(ropts)
           .then((res: any) => {
             session.lastEndTs = Date.now()
@@ -343,11 +343,11 @@ export class Crawler {
               this.log.debug(options.method, options.url, options.headers, res)
             }
             //this._onContent(options, res)
-            retrieved(key, {res: res}, options.cacheTtl)
+            retrieved(options.cacheKey, {res: res}, options.cacheTtl)
           })
           .catch((error: Error) => {
             session.lastEndTs = Date.now()
-            retrieved(key, {error: error}, 0)
+            retrieved(options.cacheKey, {error: error}, 0)
           })
       },  (value: any) => {
         if (value.error) {
