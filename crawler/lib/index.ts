@@ -3,7 +3,6 @@ import axios, { Method, AxiosRequestConfig, AxiosResponse } from 'axios';
 import * as log4js from 'log4js'
 import * as cheerio from 'cheerio'
 import * as pq from 'priority-queue'
-import * as dataCache from "cache"
 
 // 模拟浏览器信息
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36";
@@ -102,7 +101,6 @@ export interface CrawlerOptions {
   logLevel?: string;
 }
 
-const cache = new dataCache.DataCache({})
 /*const replacer = (key: string, value: any) =>
 value instanceof Object && !(value instanceof Array) ? 
     Object.keys(value)
@@ -133,6 +131,7 @@ export class Crawler {
   private e: events.EventEmitter;
   private options: CrawlerOptions;
   private groups: _GroupMap;
+  private cache: AnyMap;
   private comparator: (a: any, b: any) => boolean;
   public log: log4js.Logger;
   constructor(e: events.EventEmitter, options: CrawlerOptions) {
@@ -141,6 +140,7 @@ export class Crawler {
     };
 
     this.e = e;
+    this.cache = {};
 
     // default is the default kind options and also the global options
     this.options = options ? { ...defaultOptions, ...options } : defaultOptions;
@@ -168,6 +168,7 @@ export class Crawler {
     if (this.options.runForever) {
       setInterval(() => {
         this._printGroupStatus()
+        this._retrieveCache()
         //let used = process.memoryUsage().heapUsed / 1024 / 1024;
         //this.log.info(`The script uses approximately ${Math.round(used * 100) / 100} MB`);
       }, 600000);
@@ -181,6 +182,17 @@ export class Crawler {
         status.push(this.groups[group].sessions[sessionName].status)
       }
       this.log.info(`${group},status:${status.join(',')}, size:${this.groups[group].queue.size()}`)
+    }
+  }
+
+  //回收缓存
+  private _retrieveCache = () => {
+    let now = Date.now()
+    for (let key in this.cache) {
+      if (this.cache[key].ttl < now) {
+        //过期删除
+        delete this.cache[key]
+      }
     }
   }
 
@@ -326,7 +338,6 @@ export class Crawler {
   };
 
   private _doRequest(options: TaskOptions) {
-
     if (options.skipEventRequest !== true) {
       this.e.emit('request', options);
     }
@@ -342,68 +353,33 @@ export class Crawler {
     let session = this.groups[options.groupName].sessions[options.sessionName];
     session.lastStartTs = Date.now()
     session.lastEndTs = 0
-    if (options.cacheTtl) {
-      //let key = hash(JSON.stringify(ropts, replacer)).toString()
-      cache.get(options.cacheKey, (retrieved: dataCache.Retrieved) => {
-        axios(ropts)
-          .then((res: any) => {
-            session.lastEndTs = Date.now()
-            if (options.params) {
-              this.log.debug(options.method, options.url, options.headers, JSON.stringify(options.params), res)
-            } else {
-              this.log.debug(options.method, options.url, options.headers, res)
-            }
-            //this._onContent(options, res)
-            retrieved(options.cacheKey, {res: res}, options.cacheTtl)
-          })
-          .catch((error: Error) => {
-            this.log.error(error + JSON.stringify(options.params) + ' when fetching ' + options.url + (options.retries ? ' (' + options.retries + ' retries left)' : ''))
-            session.lastEndTs = Date.now()
-            retrieved(options.cacheKey, {error: error}, 0)
-          })
-      },  (value: any) => {
-        try {
-          if (value.error) {
-            if (options.retries) {
-              this.groups[options.groupName].retries++;
-              setTimeout(() => {
-                options.retries--;
-                this._add2Queue(options.groupName, options);
-                this.groups[options.groupName].retries--;
-              }, options.retryTimeout);
-            } else if (options.error) {
-              options.error(value.error, options);
-            }
-          } else {
-            this._onContent(options, value.res)
-          }
-        } catch(e) {
-          this.log.error('cache value err:', e)
-          if (options.retries) {
-            this.groups[options.groupName].retries++;
-            setTimeout(() => {
-              options.retries--;
-              this._add2Queue(options.groupName, options);
-              this.groups[options.groupName].retries--;
-            }, options.retryTimeout);
-          } else if (options.error) {
-            options.error(value.error, options);
-          }
-        } finally {
-          session.status = SessionStatus.Idle
-          this.e.emit('schedule', options.groupName)
+    if (options.cacheKey && this.cache[options.cacheKey] && this.cache[options.cacheKey].ttl > Date.now()) {
+      //有缓存、并且没有过期
+      try {
+        this._onContent(options, this.cache[options.cacheKey].data);
+      } catch(error) {
+        if (options.error) {
+          options.error(error, options);
         }
-      })
+      } finally {
+        session.status = SessionStatus.Idle
+        this.e.emit('schedule', options.groupName)
+      }
     } else {
       axios(ropts)
       .then((res: any) => {
-        session.lastEndTs = Date.now()
+        let now = Date.now()
+        session.lastEndTs = now
         if (options.params) {
           this.log.debug(options.method, options.url, options.headers, JSON.stringify(options.params), res)
         } else {
           this.log.debug(options.method, options.url, options.headers, res)
         }
         this._onContent(options, res)
+        //处理成功，尝试缓存
+        if (options.cacheTtl && options.cacheKey) {
+          this.cache[options.cacheKey] = { ttl: now + options.cacheTtl* 1000, data: res }
+        }
       })
       .catch((error: Error) => {
         if (!session.lastEndTs) {

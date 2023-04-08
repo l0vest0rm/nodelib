@@ -35,7 +35,7 @@ export interface CResponse extends AxiosResponse {
     charset?: string;
     $?: any;
 }
-export declare type TaskOptions = AxiosRequestConfig & AnyMap;
+export type TaskOptions = AxiosRequestConfig & AnyMap;
 export interface CrawlerOptions {
     runForever?: boolean;
     log?: log4js.Logger;
@@ -45,10 +45,12 @@ export declare class Crawler {
     private e;
     private options;
     private groups;
+    private cache;
     private comparator;
     log: log4js.Logger;
     constructor(e: events.EventEmitter, options: CrawlerOptions);
     private _printGroupStatus;
+    private _retrieveCache;
     private _onSchedule;
     private _onGroup;
     private _onSession;

@@ -5,7 +5,6 @@ const axios_1 = require("axios");
 const log4js = require("log4js");
 const cheerio = require("cheerio");
 const pq = require("priority-queue");
-const dataCache = require("cache");
 // 模拟浏览器信息
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36";
 axios_1.default.defaults.timeout = 5000;
@@ -25,7 +24,6 @@ var SessionStatus;
     SessionStatus[SessionStatus["Running"] = 2] = "Running";
     SessionStatus[SessionStatus["Sleeping"] = 3] = "Sleeping";
 })(SessionStatus || (SessionStatus = {}));
-const cache = new dataCache.DataCache({});
 /*const replacer = (key: string, value: any) =>
 value instanceof Object && !(value instanceof Array) ?
     Object.keys(value)
@@ -53,10 +51,21 @@ const hash = (str: string, seed: number = 0) => {
 }*/
 class Crawler {
     constructor(e, options) {
+        //回收缓存
+        this._retrieveCache = () => {
+            let now = Date.now();
+            for (let key in this.cache) {
+                if (this.cache[key].ttl < now) {
+                    //过期删除
+                    delete this.cache[key];
+                }
+            }
+        };
         let defaultOptions = {
             runForever: true
         };
         this.e = e;
+        this.cache = {};
         // default is the default kind options and also the global options
         this.options = options ? { ...defaultOptions, ...options } : defaultOptions;
         if (this.options.log) {
@@ -80,6 +89,7 @@ class Crawler {
         if (this.options.runForever) {
             setInterval(() => {
                 this._printGroupStatus();
+                this._retrieveCache();
                 //let used = process.memoryUsage().heapUsed / 1024 / 1024;
                 //this.log.info(`The script uses approximately ${Math.round(used * 100) / 100} MB`);
             }, 600000);
@@ -236,69 +246,26 @@ class Crawler {
         let session = this.groups[options.groupName].sessions[options.sessionName];
         session.lastStartTs = Date.now();
         session.lastEndTs = 0;
-        if (options.cacheTtl) {
-            //let key = hash(JSON.stringify(ropts, replacer)).toString()
-            cache.get(options.cacheKey, (retrieved) => {
-                (0, axios_1.default)(ropts)
-                    .then((res) => {
-                    session.lastEndTs = Date.now();
-                    if (options.params) {
-                        this.log.debug(options.method, options.url, options.headers, JSON.stringify(options.params), res);
-                    }
-                    else {
-                        this.log.debug(options.method, options.url, options.headers, res);
-                    }
-                    //this._onContent(options, res)
-                    retrieved(options.cacheKey, { res: res }, options.cacheTtl);
-                })
-                    .catch((error) => {
-                    this.log.error(error + JSON.stringify(options.params) + ' when fetching ' + options.url + (options.retries ? ' (' + options.retries + ' retries left)' : ''));
-                    session.lastEndTs = Date.now();
-                    retrieved(options.cacheKey, { error: error }, 0);
-                });
-            }, (value) => {
-                try {
-                    if (value.error) {
-                        if (options.retries) {
-                            this.groups[options.groupName].retries++;
-                            setTimeout(() => {
-                                options.retries--;
-                                this._add2Queue(options.groupName, options);
-                                this.groups[options.groupName].retries--;
-                            }, options.retryTimeout);
-                        }
-                        else if (options.error) {
-                            options.error(value.error, options);
-                        }
-                    }
-                    else {
-                        this._onContent(options, value.res);
-                    }
+        if (options.cacheKey && this.cache[options.cacheKey] && this.cache[options.cacheKey].ttl > Date.now()) {
+            //有缓存、并且没有过期
+            try {
+                this._onContent(options, this.cache[options.cacheKey].data);
+            }
+            catch (error) {
+                if (options.error) {
+                    options.error(error, options);
                 }
-                catch (e) {
-                    this.log.error('cache value err:', e);
-                    if (options.retries) {
-                        this.groups[options.groupName].retries++;
-                        setTimeout(() => {
-                            options.retries--;
-                            this._add2Queue(options.groupName, options);
-                            this.groups[options.groupName].retries--;
-                        }, options.retryTimeout);
-                    }
-                    else if (options.error) {
-                        options.error(value.error, options);
-                    }
-                }
-                finally {
-                    session.status = SessionStatus.Idle;
-                    this.e.emit('schedule', options.groupName);
-                }
-            });
+            }
+            finally {
+                session.status = SessionStatus.Idle;
+                this.e.emit('schedule', options.groupName);
+            }
         }
         else {
             (0, axios_1.default)(ropts)
                 .then((res) => {
-                session.lastEndTs = Date.now();
+                let now = Date.now();
+                session.lastEndTs = now;
                 if (options.params) {
                     this.log.debug(options.method, options.url, options.headers, JSON.stringify(options.params), res);
                 }
@@ -306,6 +273,10 @@ class Crawler {
                     this.log.debug(options.method, options.url, options.headers, res);
                 }
                 this._onContent(options, res);
+                //处理成功，尝试缓存
+                if (options.cacheTtl && options.cacheKey) {
+                    this.cache[options.cacheKey] = { ttl: now + options.cacheTtl * 1000, data: res };
+                }
             })
                 .catch((error) => {
                 if (!session.lastEndTs) {

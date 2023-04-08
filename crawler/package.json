@@ -24,7 +24,6 @@
     "cheerio": "^1.0.0-rc.12",
     "axios": "^1.3.4",
     "log4js": "^6.9.1",
-    "priority-queue": "file:../priority-queue",
-    "cache": "file:../cache"
+    "priority-queue": "file:../priority-queue"
   }
 }
