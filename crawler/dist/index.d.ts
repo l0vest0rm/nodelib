@@ -48,6 +48,7 @@ export declare class Crawler {
     private comparator;
     log: log4js.Logger;
     constructor(e: events.EventEmitter, options: CrawlerOptions);
+    private _printGroupStatus;
     private _onSchedule;
     private _onGroup;
     private _onSession;

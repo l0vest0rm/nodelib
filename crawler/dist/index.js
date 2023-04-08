@@ -79,9 +79,19 @@ class Crawler {
         this._onClear();
         if (this.options.runForever) {
             setInterval(() => {
-                let used = process.memoryUsage().heapUsed / 1024 / 1024;
-                this.log.info(`The script uses approximately ${Math.round(used * 100) / 100} MB`);
-            }, 600000);
+                this._printGroupStatus();
+                //let used = process.memoryUsage().heapUsed / 1024 / 1024;
+                //this.log.info(`The script uses approximately ${Math.round(used * 100) / 100} MB`);
+            }, 300000);
+        }
+    }
+    _printGroupStatus() {
+        for (let group in this.groups) {
+            let status = [];
+            for (let sessionName in this.groups[group].sessions) {
+                status.push(this.groups[group].sessions[sessionName].status);
+            }
+            this.log.info(`${group},status:${status.join(',')}, size:${this.groups[group].queue.size()}`);
         }
     }
     _onSchedule() {
