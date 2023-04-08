@@ -344,7 +344,6 @@ export class Crawler {
     session.lastEndTs = 0
     if (options.cacheTtl) {
       //let key = hash(JSON.stringify(ropts, replacer)).toString()
-      this.log.info('cache.get', options.cacheKey)
       cache.get(options.cacheKey, (retrieved: dataCache.Retrieved) => {
         axios(ropts)
           .then((res: any) => {
@@ -358,13 +357,13 @@ export class Crawler {
             retrieved(options.cacheKey, {res: res}, options.cacheTtl)
           })
           .catch((error: Error) => {
+            this.log.error(error + JSON.stringify(options.params) + ' when fetching ' + options.url + (options.retries ? ' (' + options.retries + ' retries left)' : ''))
             session.lastEndTs = Date.now()
             retrieved(options.cacheKey, {error: error}, 0)
           })
       },  (value: any) => {
         try {
           if (value.error) {
-            this.log.error(value.error + JSON.stringify(options.params) + ' when fetching ' + options.url + (options.retries ? ' (' + options.retries + ' retries left)' : ''))
             if (options.retries) {
               this.groups[options.groupName].retries++;
               setTimeout(() => {
@@ -372,8 +371,6 @@ export class Crawler {
                 this._add2Queue(options.groupName, options);
                 this.groups[options.groupName].retries--;
               }, options.retryTimeout);
-            } else if (options.callback) {
-              options.callback(value.error, options);
             } else if (options.error) {
               options.error(value.error, options);
             }
@@ -382,10 +379,20 @@ export class Crawler {
           }
         } catch(e) {
           this.log.error('cache value err:', e)
+          if (options.retries) {
+            this.groups[options.groupName].retries++;
+            setTimeout(() => {
+              options.retries--;
+              this._add2Queue(options.groupName, options);
+              this.groups[options.groupName].retries--;
+            }, options.retryTimeout);
+          } else if (options.error) {
+            options.error(value.error, options);
+          }
+        } finally {
+          session.status = SessionStatus.Idle
+          this.e.emit('schedule', options.groupName)
         }
-        this.log.info('cache.result', options.cacheKey)
-        session.status = SessionStatus.Idle
-        this.e.emit('schedule', options.groupName)
       })
     } else {
       axios(ropts)
@@ -410,8 +417,6 @@ export class Crawler {
             this._add2Queue(options.groupName, options);
             this.groups[options.groupName].retries--;
           }, options.retryTimeout);
-        }  else if (options.callback) {
-          options.callback(error, options);
         } else if (options.error) {
           options.error(error, options);
         }
@@ -426,21 +431,13 @@ export class Crawler {
     if (!res.data) { res.data = ''; }
 
     if (options.method === 'HEAD' || !options.jQuery) {
-      if (options.callback) {
-        return options.callback(null, options, res);
-      } else {
-        return options.success(options, res);
-      }
+      return options.success(options, res);
     }
 
     var injectableTypes = ['html', 'xhtml', 'text/xml', 'application/xml', '+xml']
     if (!options.html && !injectableTypes.includes(res.headers['content-type'].split(';')[0].trim())) {
       this.log.warn('response body is not HTML, skip injecting. Set jQuery to false to suppress this message', res.headers['content-type']);
-      if (options.callback) {
-        return options.callback(null, options, res);
-      } else {
-        return options.success(options, res);
-      }
+      return options.success(options, res);
     }
 
     this._inject(options, res);
@@ -461,10 +458,6 @@ export class Crawler {
       this.log.error('cheerio.load error', e);
     }
 
-    if (options.callback) {
-      return options.callback(null, options, res);
-    } else {
-      return options.success(options, res);
-    }
+    return options.success(options, res);
   }
 }
