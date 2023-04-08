@@ -82,7 +82,7 @@ class Crawler {
                 this._printGroupStatus();
                 //let used = process.memoryUsage().heapUsed / 1024 / 1024;
                 //this.log.info(`The script uses approximately ${Math.round(used * 100) / 100} MB`);
-            }, 60000);
+            }, 600000);
         }
     }
     _printGroupStatus() {
