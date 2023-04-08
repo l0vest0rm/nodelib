@@ -170,7 +170,7 @@ export class Crawler {
         this._printGroupStatus()
         //let used = process.memoryUsage().heapUsed / 1024 / 1024;
         //this.log.info(`The script uses approximately ${Math.round(used * 100) / 100} MB`);
-      }, 300000);
+      }, 60000);
     }
   }
 
@@ -344,6 +344,7 @@ export class Crawler {
     session.lastEndTs = 0
     if (options.cacheTtl) {
       //let key = hash(JSON.stringify(ropts, replacer)).toString()
+      this.log.info('cache.get', options.cacheKey)
       cache.get(options.cacheKey, (retrieved: dataCache.Retrieved) => {
         axios(ropts)
           .then((res: any) => {
@@ -361,24 +362,28 @@ export class Crawler {
             retrieved(options.cacheKey, {error: error}, 0)
           })
       },  (value: any) => {
-        if (value.error) {
-          this.log.error(value.error + JSON.stringify(options.params) + ' when fetching ' + options.url + (options.retries ? ' (' + options.retries + ' retries left)' : ''))
-          if (options.retries) {
-            this.groups[options.groupName].retries++;
-            setTimeout(() => {
-              options.retries--;
-              this._add2Queue(options.groupName, options);
-              this.groups[options.groupName].retries--;
-            }, options.retryTimeout);
-          } else if (options.callback) {
-            options.callback(value.error, options);
-          } else if (options.error) {
-            options.error(value.error, options);
+        try {
+          if (value.error) {
+            this.log.error(value.error + JSON.stringify(options.params) + ' when fetching ' + options.url + (options.retries ? ' (' + options.retries + ' retries left)' : ''))
+            if (options.retries) {
+              this.groups[options.groupName].retries++;
+              setTimeout(() => {
+                options.retries--;
+                this._add2Queue(options.groupName, options);
+                this.groups[options.groupName].retries--;
+              }, options.retryTimeout);
+            } else if (options.callback) {
+              options.callback(value.error, options);
+            } else if (options.error) {
+              options.error(value.error, options);
+            }
+          } else {
+            this._onContent(options, value.res)
           }
-        } else {
-          this._onContent(options, value.res)
+        } catch(e) {
+          this.log.error('cache value err:', e)
         }
-        
+        this.log.info('cache.result', options.cacheKey)
         session.status = SessionStatus.Idle
         this.e.emit('schedule', options.groupName)
       })
