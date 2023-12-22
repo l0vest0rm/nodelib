@@ -378,7 +378,7 @@ export class Crawler {
         this._onContent(options, res)
         //处理成功，尝试缓存
         if (options.cacheTtl && options.cacheKey) {
-          this.cache[options.cacheKey] = { ttl: now + options.cacheTtl* 1000, data: res }
+          this.cache[options.cacheKey] = { ttl: now + options.cacheTtl * 1000, data: res }
         }
       })
       .catch((error: Error) => {
