@@ -3,7 +3,7 @@ interface Data {
     t: number;
     v: any;
 }
-export declare type Retrieved = (key: string, value: any, ttl: number) => void;
+export type Retrieved = (key: string, value: any, ttl: number) => void;
 export declare class DataCache {
     config: any;
     checkInterval: number;

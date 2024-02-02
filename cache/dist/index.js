@@ -10,7 +10,7 @@ var DataCache = /** @class */ (function () {
             if (value != null && ttl > 0) {
                 _this.data[key] = { t: Date.now() + ttl * 1000, v: value, l: Date.now() };
             }
-            if (_this.queue[key] == undefined) {
+            if (!_this.queue[key]) {
                 return;
             }
             while (_this.queue[key].length > 0) {
@@ -34,7 +34,7 @@ var DataCache = /** @class */ (function () {
             setTimeout(_this._checkData, _this.checkInterval);
         };
         this.config = config;
-        if (config.checkInterval != undefined) {
+        if (config.checkInterval) {
             this.checkInterval = config.checkInterval;
         }
         else {
@@ -47,12 +47,12 @@ var DataCache = /** @class */ (function () {
         }
     }
     DataCache.prototype.get = function (key, retrieve, callback) {
-        if (this.data[key] != undefined && this.data[key].t > Date.now()) {
+        if (this.data[key] && this.data[key].t > Date.now()) {
             //有数据，并且没有过期
             this.data[key].l = Date.now();
             callback(this.data[key].v);
         }
-        else if (this.queue[key] == undefined) {
+        else if (!this.queue[key]) {
             this.queue[key] = [callback];
             retrieve(this._retrieved);
         }
@@ -64,7 +64,7 @@ var DataCache = /** @class */ (function () {
     };
     //强制重新获取
     DataCache.prototype.getNocache = function (key, retrieve, callback) {
-        if (this.queue[key] == undefined) {
+        if (!this.queue[key]) {
             this.queue[key] = [callback];
         }
         else {
