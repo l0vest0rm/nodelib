@@ -2,7 +2,7 @@ import * as events from 'events'
 import axios, { Method, AxiosRequestConfig, AxiosResponse } from 'axios';
 import * as log4js from 'log4js'
 import * as cheerio from 'cheerio'
-import * as pq from 'priority-queue'
+import * as pq from '@l0vest0rm/priority-queue'
 
 // 模拟浏览器信息
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36";

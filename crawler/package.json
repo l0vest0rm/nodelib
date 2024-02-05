@@ -1,7 +1,6 @@
 {
-  "name": "crawler",
+  "name": "@l0vest0rm/crawler",
   "version": "1.0.0",
-  "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "directories": {
@@ -13,7 +12,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "l0vest0rm",
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^20.11.16",
@@ -23,6 +22,15 @@
     "cheerio": "^1.0.0-rc.12",
     "axios": "^1.6.7",
     "log4js": "^6.9.1",
-    "priority-queue": "file:../priority-queue"
-  }
+    "@l0vest0rm/priority-queue": "1.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/l0vest0rm/nodelib.git#main"
+  },
+  "bugs": {
+    "url": "https://github.com/l0vest0rm/nodelib/issues"
+  },
+  "homepage": "https://github.com/l0vest0rm/nodelib/tree/main#readme",
+  "description": ""
 }

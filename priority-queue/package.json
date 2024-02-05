@@ -1,7 +1,6 @@
 {
-  "name": "priority-queue",
+  "name": "@l0vest0rm/priority-queue",
   "version": "1.0.0",
-  "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "directories": {
@@ -13,6 +12,15 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "author": "l0vest0rm",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/l0vest0rm/nodelib.git"
+  },
+  "bugs": {
+    "url": "https://github.com/l0vest0rm/nodelib/issues"
+  },
+  "homepage": "https://github.com/l0vest0rm/nodelib#readme",
+  "description": ""
 }

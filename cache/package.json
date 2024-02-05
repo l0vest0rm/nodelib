@@ -1,7 +1,6 @@
 {
-  "name": "cache",
+  "name": "@l0vest0rm/cache",
   "version": "1.0.0",
-  "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "directories": {
@@ -13,8 +12,16 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "l0vest0rm",
   "license": "ISC",
-  "devDependencies": {
-  }
+  "devDependencies": {},
+  "repository": {
+    "type": "https",
+    "url": "https://github.com/l0vest0rm/nodelib.git"
+  },
+  "bugs": {
+    "url": "https://github.com/l0vest0rm/nodelib/issues"
+  },
+  "homepage": "https://github.com/l0vest0rm/nodelib#readme",
+  "description": ""
 }
