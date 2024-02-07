@@ -26,7 +26,8 @@
     "index.d.ts"
   ],
   "scripts": {
-    "lint": "eslint . --ignore-path .gitignore"
+    "lint": "eslint . --ignore-path .gitignore",
+    "publish": "npm publish --access public"
   },
   "dependencies": {
     "terser": "^5.27.0",
