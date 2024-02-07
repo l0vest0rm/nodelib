@@ -1,0 +1,39 @@
+{
+  "name": "@l0vest0rm/gulp-terser",
+  "version": "1.0.0",
+  "description": "Gulp plugin to minify files with terser,forked from https://github.com/sibiraj-s/gulp-plugin-terser#readme",
+  "author": "sibiraj-s",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sibiraj-s/gulp-plugin-terser.git"
+  },
+  "homepage": "https://github.com/sibiraj-s/gulp-plugin-terser.git#readme",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "engines": {
+    "node": ">=16"
+  },
+  "keywords": [
+    "gulp",
+    "terser",
+    "minify",
+    "gulp-plugin",
+    "gulp-terser"
+  ],
+  "files": [
+    "index.js",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "lint": "eslint . --ignore-path .gitignore"
+  },
+  "dependencies": {
+    "terser": "^5.27.0",
+    "plugin-error": "^2.0.1",
+    "through2": "^4.0.2",
+    "vinyl-sourcemaps-apply": "^0.2.1"
+  },
+  "devDependencies": {
+  }
+}
