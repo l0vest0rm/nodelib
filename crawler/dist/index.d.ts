@@ -7,7 +7,6 @@ interface AnyMap {
 }
 interface GroupOptions {
     groupVars?: AnyMap;
-    jQuery?: boolean;
     method?: Method;
     priority?: number;
     waitBefore?: number;
@@ -32,8 +31,6 @@ export interface Group {
     tasks: TaskOptions[];
 }
 export interface CResponse extends AxiosResponse {
-    charset?: string;
-    doc?: any;
 }
 export type TaskOptions = AxiosRequestConfig & AnyMap;
 export interface CrawlerOptions {
@@ -60,6 +57,5 @@ export declare class Crawler {
     private _doTask;
     private _doRequest;
     private _onContent;
-    private _inject;
 }
 export {};

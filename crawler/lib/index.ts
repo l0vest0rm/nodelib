@@ -1,7 +1,6 @@
 import * as events from 'events'
 import axios, { Method, AxiosRequestConfig, AxiosResponse } from 'axios';
 import * as log4js from 'log4js'
-import { JSDOM } from "jsdom"
 import * as pq from '@l0vest0rm/priority-queue'
 
 // 模拟浏览器信息
@@ -38,7 +37,6 @@ interface PriorityOptions {
 
 interface GroupOptions {
   groupVars?: AnyMap, //user define group vars
-  jQuery?: boolean,
   method?: Method,
   priority?: number,
   waitBefore?: number,
@@ -89,8 +87,6 @@ export interface Group {
 }
 
 export interface CResponse extends AxiosResponse {
-  charset?: string
-  doc?: any
 }
 
 export type TaskOptions = AxiosRequestConfig & AnyMap;
@@ -234,7 +230,6 @@ export class Crawler {
   private _onGroup() {
     this.e.on('group', (groupName: string, options: GroupOptions | null) => {
       let defaultOptions: GroupOptions = {
-        jQuery: false,
         method: 'get',
         priority: 100,
         waitBefore: 1,
@@ -406,26 +401,6 @@ export class Crawler {
   private _onContent(options: TaskOptions, res: AxiosResponse) {
     if (!res.data) { res.data = ''; }
 
-    if (options.method === 'HEAD' || !options.jQuery) {
-      return options.success(options, res);
-    }
-
-    var injectableTypes = ['html', 'xhtml', 'text/xml', 'application/xml', '+xml']
-    if (!options.html && !injectableTypes.includes(res.headers['content-type'].split(';')[0].trim())) {
-      this.log.warn('response body is not HTML, skip injecting. Set jQuery to false to suppress this message', res.headers['content-type']);
-      return options.success(options, res);
-    }
-
-    this._inject(options, res);
-  };
-
-  private _inject(options: TaskOptions, res: CResponse) {
-    try {
-      const dom = new JSDOM(res.data)
-      res.doc = dom.window.document
-    } catch (e) {
-      this.log.error('JSDOM error', e)
-    }
-    return options.success(options, res)
+    return options.success(options, res);
   }
 }

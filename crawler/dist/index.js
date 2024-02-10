@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Crawler = void 0;
 const axios_1 = require("axios");
 const log4js = require("log4js");
-const jsdom_1 = require("jsdom");
 const pq = require("@l0vest0rm/priority-queue");
 // 模拟浏览器信息
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36";
@@ -136,7 +135,6 @@ class Crawler {
     _onGroup() {
         this.e.on('group', (groupName, options) => {
             let defaultOptions = {
-                jQuery: false,
                 method: 'get',
                 priority: 100,
                 waitBefore: 1,
@@ -304,25 +302,6 @@ class Crawler {
     _onContent(options, res) {
         if (!res.data) {
             res.data = '';
-        }
-        if (options.method === 'HEAD' || !options.jQuery) {
-            return options.success(options, res);
-        }
-        var injectableTypes = ['html', 'xhtml', 'text/xml', 'application/xml', '+xml'];
-        if (!options.html && !injectableTypes.includes(res.headers['content-type'].split(';')[0].trim())) {
-            this.log.warn('response body is not HTML, skip injecting. Set jQuery to false to suppress this message', res.headers['content-type']);
-            return options.success(options, res);
-        }
-        this._inject(options, res);
-    }
-    ;
-    _inject(options, res) {
-        try {
-            const dom = new jsdom_1.JSDOM(res.data);
-            res.doc = dom.window.document;
-        }
-        catch (e) {
-            this.log.error('JSDOM error', e);
         }
         return options.success(options, res);
     }
