@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Crawler = void 0;
 const axios_1 = require("axios");
 const log4js = require("log4js");
-const cheerio = require("cheerio");
+const jsdom_1 = require("jsdom");
 const pq = require("@l0vest0rm/priority-queue");
 // 模拟浏览器信息
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36";
@@ -317,19 +317,12 @@ class Crawler {
     }
     ;
     _inject(options, res) {
-        let $;
-        let defaultCheerioOptions = {
-            normalizeWhitespace: false,
-            xmlMode: false,
-            decodeEntities: true
-        };
-        let cheerioOptions = options.jQuery.options || defaultCheerioOptions;
         try {
-            $ = cheerio.load(res.data, cheerioOptions);
-            res.$ = $;
+            const dom = new jsdom_1.JSDOM(res.data);
+            res.doc = dom.window.document;
         }
         catch (e) {
-            this.log.error('cheerio.load error', e);
+            this.log.error('JSDOM error', e);
         }
         return options.success(options, res);
     }

@@ -1,6 +1,7 @@
 {
-  "name": "@l0vest0rm/crawler",
-  "version": "1.0.0",
+  "name": "crawler",
+  "version": "1.0.1",
+  "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "directories": {
@@ -17,10 +18,10 @@
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^20.11.16",
-    "@types/cheerio": "^0.22.35"
+    "@types/jsdom": "^21.1.6"
   },
   "dependencies": {
-    "cheerio": "^1.0.0-rc.12",
+    "jsdom": "^24.0.0",
     "axios": "^1.6.7",
     "log4js": "^6.9.1",
     "@l0vest0rm/priority-queue": "1.0.0"

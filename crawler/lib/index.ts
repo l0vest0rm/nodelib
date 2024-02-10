@@ -1,7 +1,7 @@
 import * as events from 'events'
 import axios, { Method, AxiosRequestConfig, AxiosResponse } from 'axios';
 import * as log4js from 'log4js'
-import * as cheerio from 'cheerio'
+import { JSDOM } from "jsdom"
 import * as pq from '@l0vest0rm/priority-queue'
 
 // 模拟浏览器信息
@@ -90,7 +90,7 @@ export interface Group {
 
 export interface CResponse extends AxiosResponse {
   charset?: string
-  $?: any
+  doc?: any
 }
 
 export type TaskOptions = AxiosRequestConfig & AnyMap;
@@ -420,20 +420,12 @@ export class Crawler {
   };
 
   private _inject(options: TaskOptions, res: CResponse) {
-    let $;
-    let defaultCheerioOptions = {
-      normalizeWhitespace: false,
-      xmlMode: false,
-      decodeEntities: true
-    };
-    let cheerioOptions = options.jQuery.options || defaultCheerioOptions;
     try {
-      $ = cheerio.load(res.data, cheerioOptions);
-      res.$ = $;
+      const dom = new JSDOM(res.data)
+      res.doc = dom.window.document
     } catch (e) {
-      this.log.error('cheerio.load error', e);
+      this.log.error('JSDOM error', e)
     }
-
-    return options.success(options, res);
+    return options.success(options, res)
   }
 }

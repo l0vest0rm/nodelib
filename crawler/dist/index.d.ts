@@ -33,7 +33,7 @@ export interface Group {
 }
 export interface CResponse extends AxiosResponse {
     charset?: string;
-    $?: any;
+    doc?: any;
 }
 export type TaskOptions = AxiosRequestConfig & AnyMap;
 export interface CrawlerOptions {
